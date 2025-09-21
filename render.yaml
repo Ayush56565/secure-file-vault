@@ -1,6 +1,11 @@
 # Render deployment configuration for Secure File Vault
 # This file deploys the entire application: PostgreSQL database, backend API, and frontend
 
+# PostgreSQL Database (deploy first)
+databases:
+  - name: secure-file-vault-db
+    plan: free
+
 services:
   # Backend API Service
   - type: web
@@ -48,7 +53,3 @@ services:
       - key: PORT
         value: 10000
 
-# PostgreSQL Database
-databases:
-  - name: secure-file-vault-db
-    plan: free

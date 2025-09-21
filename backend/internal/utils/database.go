@@ -3,7 +3,9 @@ package utils
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"os"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -14,13 +16,31 @@ func ConnectDB() (*sql.DB, error) {
 		databaseURL = "postgres://filevault:filevault123@localhost:5433/filevault?sslmode=disable"
 	}
 
+	log.Printf("Connecting to database...")
+
 	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+	// Set connection pool settings
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
+	// Retry connection with exponential backoff
+	maxRetries := 10
+	for i := 0; i < maxRetries; i++ {
+		if err := db.Ping(); err != nil {
+			if i == maxRetries-1 {
+				return nil, fmt.Errorf("failed to ping database after %d retries: %w", maxRetries, err)
+			}
+			log.Printf("Database connection attempt %d failed: %v", i+1, err)
+			time.Sleep(time.Duration(i+1) * 2 * time.Second)
+			continue
+		}
+		log.Printf("Database connected successfully!")
+		return db, nil
 	}
 
 	return db, nil
