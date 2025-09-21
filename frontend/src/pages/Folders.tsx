@@ -345,7 +345,7 @@ const Folders: React.FC = () => {
                   </Card>
                 ))}
                 
-                {(!foldersData?.data?.folders || foldersData.data.folders.length === 0) && (
+                {(!foldersData?.data?.folders || foldersData.data?.folders?.length === 0) && (
                   <div className="col-span-full text-center py-12">
                     <div className="text-6xl mb-4">📁</div>
                     <h3 className="text-xl font-semibold text-muted-foreground mb-2">No folders found</h3>

@@ -71,7 +71,7 @@ const FolderManager: React.FC<FolderManagerProps> = ({ onFolderSelect, selectedF
     }
   };
 
-  const folders = foldersData?.data.folders || [];
+  const folders = foldersData?.data?.folders || [];
 
   if (isLoading) {
     return (

@@ -27,7 +27,7 @@ const AdminDashboard: React.FC = () => {
   // Fetch system stats
   const { data: systemStats, isLoading: statsLoading } = useQuery(
     'adminSystemStats',
-    () => adminAPI.getSystemStats().then(res => res.data.stats),
+    () => adminAPI.getSystemStats().then(res => res.data?.stats),
     { refetchInterval: 30000 } // Refresh every 30 seconds
   );
 
@@ -41,21 +41,21 @@ const AdminDashboard: React.FC = () => {
   // Fetch user stats
   const { data: userStats, isLoading: usersLoading } = useQuery(
     'adminUserStats',
-    () => adminAPI.getUserStats().then(res => res.data.users),
+    () => adminAPI.getUserStats().then(res => res.data?.users),
     { enabled: selectedTab === 'users' }
   );
 
   // Fetch top files
   const { data: topFiles, isLoading: topFilesLoading } = useQuery(
     'adminTopFiles',
-    () => adminAPI.getTopFiles({ limit: 10 }).then(res => res.data.files),
+    () => adminAPI.getTopFiles({ limit: 10 }).then(res => res.data?.files),
     { enabled: selectedTab === 'analytics' }
   );
 
   // Fetch recent activity
   const { data: recentActivity, isLoading: activityLoading } = useQuery(
     'adminRecentActivity',
-    () => adminAPI.getRecentActivity({ limit: 20 }).then(res => res.data.activity),
+    () => adminAPI.getRecentActivity({ limit: 20 }).then(res => res.data?.activity),
     { enabled: selectedTab === 'activity' }
   );
 
