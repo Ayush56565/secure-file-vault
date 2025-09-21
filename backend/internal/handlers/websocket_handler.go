@@ -25,7 +25,26 @@ type WebSocketMessage struct {
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow all origins in development
+		origin := r.Header.Get("Origin")
+		
+		// Allow specific origins for production
+		allowedOrigins := []string{
+			"https://secure-file-vault-frontend.onrender.com",
+			"http://localhost:3000",
+			"http://localhost:5173",
+			"http://127.0.0.1:3000",
+			"http://127.0.0.1:5173",
+		}
+		
+		// Check if origin is allowed
+		for _, allowedOrigin := range allowedOrigins {
+			if origin == allowedOrigin {
+				return true
+			}
+		}
+		
+		// Allow requests without origin header (direct connections)
+		return origin == ""
 	},
 }
 
