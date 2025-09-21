@@ -187,14 +187,14 @@ const Folders: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="parentFolder">Parent Folder (optional)</Label>
                   <Select
-                    value={parentFolderId?.toString() || ''}
-                    onValueChange={(value) => setParentFolderId(value ? parseInt(value) : null)}
+                    value={parentFolderId?.toString() || 'root'}
+                    onValueChange={(value) => setParentFolderId(value === "root" ? null : parseInt(value))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="No parent (root level)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No parent (root level)</SelectItem>
+                      <SelectItem value="root">No parent (root level)</SelectItem>
                       {foldersData?.data?.folders?.map((folder: Folder) => (
                         <SelectItem key={folder.id} value={folder.id.toString()}>
                           {folder.name}
