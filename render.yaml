@@ -37,7 +37,7 @@ services:
         value: "100"
     healthCheckPath: /health
 
-  # Frontend Web Service
+  # Frontend Web Service (Updated API URLs)
   - type: web
     name: secure-file-vault-frontend
     env: docker
