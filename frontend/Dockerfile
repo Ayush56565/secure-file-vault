@@ -17,10 +17,10 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM nginx:alpine
+FROM node:18-alpine
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init wget
+# Install serve for static file serving
+RUN npm install -g serve
 
 # Create app user for security
 RUN addgroup -g 1001 -S nodejs && \
@@ -30,20 +30,7 @@ RUN addgroup -g 1001 -S nodejs && \
 WORKDIR /app
 
 # Copy built application
-COPY --from=builder --chown=nextjs:nodejs /app/build /usr/share/nginx/html
-
-# Copy nginx config template
-COPY nginx.conf /etc/nginx/nginx.conf.template
-
-# Create startup script
-RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'envsubst '"'"'$PORT'"'"' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf' >> /start.sh && \
-    echo 'nginx -g "daemon off;"' >> /start.sh && \
-    chmod +x /start.sh
-
-# Create nginx directories and set permissions
-RUN mkdir -p /var/log/nginx /var/lib/nginx /tmp/nginx /var/cache/nginx/client_temp /var/cache/nginx/proxy_temp /var/cache/nginx/fastcgi_temp /var/cache/nginx/uwsgi_temp /var/cache/nginx/scgi_temp && \
-    chown -R nextjs:nodejs /var/log/nginx /var/lib/nginx /tmp/nginx /var/cache/nginx /usr/share/nginx/html
+COPY --from=builder --chown=nextjs:nodejs /app/build ./build
 
 # Switch to non-root user
 USER nextjs
@@ -55,6 +42,5 @@ EXPOSE $PORT
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:$PORT || exit 1
 
-# Start nginx with dynamic port
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["/start.sh"]
+# Start static file server
+CMD ["sh", "-c", "serve -s build -l $PORT"]
