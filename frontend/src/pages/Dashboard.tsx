@@ -32,11 +32,13 @@ const Dashboard: React.FC = () => {
   );
 
   // Fetch storage statistics
-  const { data: storageStats } = useQuery(
+  const { data: storageStats, isLoading: storageStatsLoading } = useQuery(
     'storageStats',
     () => fileAPI.getStorageStats().then(res => res.data),
     {
       refetchInterval: 30000,
+      retry: 3,
+      retryDelay: 1000,
     }
   );
 
@@ -171,7 +173,7 @@ const Dashboard: React.FC = () => {
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Storage Used</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {statsLoading ? '...' : formatBytes((storageStats.total_storage_bytes || 0))}
+                    {statsLoading || storageStatsLoading ? '...' : formatBytes((storageStats?.total_storage_bytes || 0))}
                   </p>
                 </div>
                 <HardDrive className="h-8 w-8 text-green-600/20" />
@@ -219,31 +221,31 @@ const Dashboard: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="text-center p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-primary">
-                    {formatBytes(storageStats.total_storage_bytes || 0)}
+                    {storageStatsLoading ? '...' : formatBytes(storageStats?.total_storage_bytes || 0)}
                   </div>
                   <div className="text-sm text-muted-foreground">Actual Storage Used</div>
                 </div>
                 <div className="text-center p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-orange-600">
-                    {formatBytes(storageStats.original_storage_bytes || 0)}
+                    {storageStatsLoading ? '...' : formatBytes(storageStats?.original_storage_bytes || 0)}
                   </div>
                   <div className="text-sm text-muted-foreground">Without Deduplication</div>
                 </div>
                 <div className="text-center p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-green-600">
-                    {formatBytes(storageStats.savings_bytes || 0)}
+                    {storageStatsLoading ? '...' : formatBytes(storageStats?.savings_bytes || 0)}
                   </div>
                   <div className="text-sm text-muted-foreground">Space Saved</div>
                 </div>
                 <div className="text-center p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-primary">
-                    {formatPercentage(storageStats.savings_percentage || 0)}%
+                    {storageStatsLoading ? '...' : formatPercentage(storageStats?.savings_percentage || 0)}%
                   </div>
                   <div className="text-sm text-muted-foreground">Efficiency</div>
                 </div>
                 <div className="text-center p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-green-600">
-                    {formatPercentage((storageStats.deduplication_ratio || 0) * 100)}%
+                    {storageStatsLoading ? '...' : formatPercentage((storageStats?.deduplication_ratio || 0) * 100)}%
                   </div>
                   <div className="text-sm text-muted-foreground">Deduplication Rate</div>
                 </div>

@@ -49,11 +49,13 @@ const AdminPanel: React.FC = () => {
   );
 
   // Fetch storage statistics
-  const { data: storageStats } = useQuery(
+  const { data: storageStats, isLoading: storageStatsLoading } = useQuery(
     'adminStorageStats',
     () => fileAPI.getStorageStats().then(res => res.data),
     {
       refetchInterval: 30000,
+      retry: 3,
+      retryDelay: 1000,
     }
   );
 
@@ -414,25 +416,25 @@ const AdminPanel: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="text-center p-4 bg-gray-50 rounded-lg">
                         <div className="text-2xl font-bold text-primary">
-                          {formatBytes(storageStats.total_storage_bytes || 0)}
+                          {storageStatsLoading ? '...' : formatBytes(storageStats?.total_storage_bytes || 0)}
                         </div>
                         <div className="text-sm text-gray-600">Actual Storage Used</div>
                       </div>
                       <div className="text-center p-4 bg-gray-50 rounded-lg">
                         <div className="text-2xl font-bold text-warning">
-                          {formatBytes(storageStats.original_storage_bytes || 0)}
+                          {storageStatsLoading ? '...' : formatBytes(storageStats?.original_storage_bytes || 0)}
                         </div>
                         <div className="text-sm text-gray-600">Without Deduplication</div>
                       </div>
                       <div className="text-center p-4 bg-gray-50 rounded-lg">
                         <div className="text-2xl font-bold text-success">
-                          {formatBytes(storageStats.savings_bytes || 0)}
+                          {storageStatsLoading ? '...' : formatBytes(storageStats?.savings_bytes || 0)}
                         </div>
                         <div className="text-sm text-gray-600">Space Saved</div>
                       </div>
                       <div className="text-center p-4 bg-gray-50 rounded-lg">
                         <div className="text-2xl font-bold text-primary">
-                          {formatPercentage(storageStats.savings_percentage || 0)}%
+                          {storageStatsLoading ? '...' : formatPercentage(storageStats?.savings_percentage || 0)}%
                         </div>
                         <div className="text-sm text-gray-600">Efficiency</div>
                       </div>
