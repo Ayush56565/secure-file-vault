@@ -46,10 +46,9 @@ services:
     plan: free
     envVars:
       - key: REACT_APP_API_URL
-        fromService:
-          type: web
-          name: secure-file-vault-backend
-          property: host
+        value: https://secure-file-vault-backend-6wqo.onrender.com
+      - key: REACT_APP_WS_URL
+        value: wss://secure-file-vault-backend-6wqo.onrender.com/ws
       - key: NODE_ENV
         value: production
       - key: PORT
