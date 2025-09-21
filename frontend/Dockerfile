@@ -42,12 +42,12 @@ RUN mkdir -p /var/log/nginx /var/lib/nginx /tmp/nginx /var/cache/nginx/client_te
 # Switch to non-root user
 USER nextjs
 
-# Expose port
-EXPOSE 3031
+# Expose port (Render uses PORT environment variable)
+EXPOSE $PORT
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3031 || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:$PORT || exit 1
 
 # Start nginx
 ENTRYPOINT ["dumb-init", "--"]

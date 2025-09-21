@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
 
 	"filevault/internal/handlers"
@@ -57,6 +58,15 @@ func main() {
 
 	// Add CORS middleware
 	r.Use(handlers.CORSMiddleware())
+
+	// Health check endpoint
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "healthy",
+			"service": "secure-file-vault-backend",
+			"version": "1.0.0",
+		})
+	})
 
 	// Public routes
 	r.POST("/api/auth/register", authHandler.Register)
