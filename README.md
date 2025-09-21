@@ -2,6 +2,13 @@
 
 A modern, secure file storage and sharing platform built with Go and React. Features content-based deduplication, hierarchical organization, real-time collaboration, and comprehensive admin capabilities.
 
+## 🌐 Live Deployment
+
+**🚀 [Frontend Application](https://secure-file-vault-frontend.onrender.com)** - React-based user interface  
+**⚙️ [Backend API](https://secure-file-vault-backend-6wqo.onrender.com)** - Go REST API server
+
+> **Note**: The application is deployed on Render's free tier, which may experience cold starts. Please allow a few moments for the services to initialize on first access.
+
 ## 🚀 Features
 
 ### Core Functionality
