@@ -5,6 +5,9 @@
 databases:
   - name: secure-file-vault-db
     plan: free
+    ports: 
+    - "5432:5432"
+
 
 services:
   # Backend API Service
