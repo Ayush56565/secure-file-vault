@@ -1,0 +1,1449 @@
+openapi: 3.0.3
+info:
+  title: Secure File Vault API
+  description: |
+    A secure file storage and sharing API with advanced deduplication capabilities.
+    
+    ## Features
+    - JWT-based authentication
+    - File upload/download with deduplication
+    - Public/private file sharing
+    - Folder organization
+    - Admin management
+    - Real-time WebSocket updates
+    - Rate limiting and security controls
+    
+    ## Authentication
+    Most endpoints require a JWT token in the Authorization header:
+    ```
+    Authorization: Bearer <your-jwt-token>
+    ```
+    
+    ## Rate Limiting
+    - Default: 10 requests per second per user
+    - Configurable via environment variables
+    - Returns 429 status when exceeded
+    
+    ## File Deduplication
+    Files are automatically deduplicated based on SHA-256 content hashing,
+    providing significant storage savings for duplicate content.
+  version: 1.0.0
+  contact:
+    name: Secure File Vault Support
+    email: support@filevault.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8081
+    description: Development server
+  - url: https://api.filevault.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Create a new user account with the provided credentials
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                  description: Unique username
+                  example: testuser
+                email:
+                  type: string
+                  format: email
+                  description: Valid email address
+                  example: test@example.com
+                password:
+                  type: string
+                  minLength: 6
+                  description: Password (minimum 6 characters)
+                  example: password123
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User registered successfully
+                  token:
+                    type: string
+                    description: JWT authentication token
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Username or email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      description: Authenticate user and receive JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  description: Username
+                  example: testuser
+                password:
+                  type: string
+                  description: Password
+                  example: password123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: JWT authentication token
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/profile:
+    get:
+      tags:
+        - Authentication
+      summary: Get user profile
+      description: Get current user's profile information
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/stats:
+    get:
+      tags:
+        - Authentication
+      summary: Get user storage stats
+      description: Get current user's storage usage statistics
+      responses:
+        '200':
+          description: Storage stats retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageStats'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/files/upload:
+    post:
+      tags:
+        - File Management
+      summary: Upload files
+      description: Upload one or more files with metadata
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - files
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Files to upload
+                folder_id:
+                  type: integer
+                  description: Optional folder ID
+                  example: 1
+                is_public:
+                  type: boolean
+                  description: Make files public
+                  default: false
+                  example: false
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of tags
+                  example: ["work", "important"]
+      responses:
+        '201':
+          description: Files uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Files uploaded successfully
+                  files:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/File'
+        '400':
+          description: Invalid file or metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: File too large or quota exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '415':
+          description: Unsupported file type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/files:
+    get:
+      tags:
+        - File Management
+      summary: List user files
+      description: Get paginated list of user's files with search and filtering
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: query
+          in: query
+          description: Search term for file names
+          schema:
+            type: string
+        - name: mime_type
+          in: query
+          description: Filter by MIME type
+          schema:
+            type: string
+        - name: min_size
+          in: query
+          description: Minimum file size in bytes
+          schema:
+            type: integer
+        - name: max_size
+          in: query
+          description: Maximum file size in bytes
+          schema:
+            type: integer
+        - name: start_date
+          in: query
+          description: Filter files created after date (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          description: Filter files created before date (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: tags
+          in: query
+          description: Comma-separated list of tags
+          schema:
+            type: string
+        - name: uploader
+          in: query
+          description: Filter by uploader username
+          schema:
+            type: string
+        - name: folder_id
+          in: query
+          description: Filter by folder ID
+          schema:
+            type: integer
+        - name: sort_by
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum: [name, size, created_at, download_count]
+            default: created_at
+        - name: sort_order
+          in: query
+          description: Sort direction
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Files retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilesResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/files/{id}:
+    get:
+      tags:
+        - File Management
+      summary: Get file details
+      description: Get detailed information about a specific file
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: File ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: File details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - File Management
+      summary: Delete file
+      description: Delete a file (only owner can delete)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: File ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: File deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: File deleted successfully
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized to delete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/files/{id}/download:
+    get:
+      tags:
+        - File Management
+      summary: Download file
+      description: Download a private file (requires authentication)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: File ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              description: Attachment filename
+              schema:
+                type: string
+                example: attachment; filename="document.pdf"
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/files/public:
+    get:
+      tags:
+        - File Management
+      summary: Get public files
+      description: Get paginated list of all public files
+      security: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: query
+          in: query
+          description: Search term for file names
+          schema:
+            type: string
+        - name: mime_type
+          in: query
+          description: Filter by MIME type
+          schema:
+            type: string
+        - name: sort_by
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum: [name, size, created_at, download_count]
+            default: created_at
+        - name: sort_order
+          in: query
+          description: Sort direction
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Public files retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilesResponse'
+
+  /api/files/public/{id}/download:
+    get:
+      tags:
+        - File Management
+      summary: Download public file
+      description: Download a public file (no authentication required)
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: File ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              description: Attachment filename
+              schema:
+                type: string
+                example: attachment; filename="document.pdf"
+        '404':
+          description: File not found or not public
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: File is private
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/folders:
+    post:
+      tags:
+        - Folder Management
+      summary: Create folder
+      description: Create a new folder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                  description: Folder name
+                  example: Documents
+                parent_id:
+                  type: integer
+                  description: Parent folder ID
+                  example: 1
+                is_public:
+                  type: boolean
+                  description: Make folder public
+                  default: false
+                  example: false
+      responses:
+        '201':
+          description: Folder created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Folder created successfully
+                  folder:
+                    $ref: '#/components/schemas/Folder'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags:
+        - Folder Management
+      summary: List folders
+      description: Get user's folders with optional filtering
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: parent_id
+          in: query
+          description: Filter by parent folder ID
+          schema:
+            type: integer
+        - name: is_public
+          in: query
+          description: Filter by public/private status
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Folders retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoldersResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/folders/{id}:
+    put:
+      tags:
+        - Folder Management
+      summary: Update folder
+      description: Update folder properties
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Folder ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                  description: Folder name
+                parent_id:
+                  type: integer
+                  description: Parent folder ID
+                is_public:
+                  type: boolean
+                  description: Make folder public
+      responses:
+        '200':
+          description: Folder updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Folder updated successfully
+                  folder:
+                    $ref: '#/components/schemas/Folder'
+        '404':
+          description: Folder not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized to update
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Folder Management
+      summary: Delete folder
+      description: Delete a folder (must be empty)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Folder ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Folder deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Folder deleted successfully
+        '404':
+          description: Folder not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized to delete or folder not empty
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/folders/{id}/files:
+    get:
+      tags:
+        - Folder Management
+      summary: Get folder files
+      description: Get files in a specific folder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Folder ID
+          schema:
+            type: integer
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: query
+          in: query
+          description: Search term for file names
+          schema:
+            type: string
+        - name: mime_type
+          in: query
+          description: Filter by MIME type
+          schema:
+            type: string
+        - name: sort_by
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum: [name, size, created_at, download_count]
+            default: created_at
+        - name: sort_order
+          in: query
+          description: Sort direction
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Folder files retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilesResponse'
+        '404':
+          description: Folder not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/stats:
+    get:
+      tags:
+        - Admin
+      summary: Get system statistics
+      description: Get comprehensive system statistics (admin only)
+      responses:
+        '200':
+          description: System statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemStats'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/files:
+    get:
+      tags:
+        - Admin
+      summary: Get all files (admin)
+      description: Get all files in the system (admin only)
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: query
+          in: query
+          description: Search term for file names
+          schema:
+            type: string
+        - name: mime_type
+          in: query
+          description: Filter by MIME type
+          schema:
+            type: string
+        - name: uploader
+          in: query
+          description: Filter by uploader username
+          schema:
+            type: string
+        - name: sort_by
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum: [name, size, created_at, download_count]
+            default: created_at
+        - name: sort_order
+          in: query
+          description: Sort direction
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: All files retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilesResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/users:
+    get:
+      tags:
+        - Admin
+      summary: Get all users (admin)
+      description: Get all users in the system (admin only)
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: All users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/users/{id}/quota:
+    put:
+      tags:
+        - Admin
+      summary: Update user quota (admin)
+      description: Update user's storage quota (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - storage_quota_mb
+              properties:
+                storage_quota_mb:
+                  type: integer
+                  minimum: 1
+                  description: Storage quota in MB
+                  example: 100
+      responses:
+        '200':
+          description: User quota updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User quota updated successfully
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from login endpoint
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: Invalid input data
+
+    User:
+      type: object
+      required:
+        - id
+        - username
+        - email
+        - is_admin
+        - storage_quota_mb
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          description: User ID
+          example: 1
+        username:
+          type: string
+          description: Username
+          example: testuser
+        email:
+          type: string
+          format: email
+          description: Email address
+          example: test@example.com
+        is_admin:
+          type: boolean
+          description: Admin status
+          example: false
+        storage_quota_mb:
+          type: integer
+          description: Storage quota in MB
+          example: 10
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: "2023-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2023-01-01T00:00:00Z"
+
+    File:
+      type: object
+      required:
+        - id
+        - user_id
+        - hash_id
+        - original_name
+        - display_name
+        - is_public
+        - download_count
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          description: File ID
+          example: 1
+        user_id:
+          type: integer
+          description: Owner user ID
+          example: 1
+        hash_id:
+          type: integer
+          description: File hash ID for deduplication
+          example: 1
+        original_name:
+          type: string
+          description: Original filename
+          example: document.pdf
+        display_name:
+          type: string
+          description: Display filename
+          example: document.pdf
+        folder_id:
+          type: integer
+          nullable: true
+          description: Folder ID
+          example: 1
+        is_public:
+          type: boolean
+          description: Public visibility
+          example: false
+        download_count:
+          type: integer
+          description: Download count
+          example: 5
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: "2023-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2023-01-01T00:00:00Z"
+        hash_sha256:
+          type: string
+          description: SHA-256 hash of file content
+          example: "abc123def456..."
+        file_size:
+          type: integer
+          description: File size in bytes
+          example: 1048576
+        mime_type:
+          type: string
+          description: MIME type
+          example: application/pdf
+        username:
+          type: string
+          description: Owner username
+          example: testuser
+        folder_name:
+          type: string
+          nullable: true
+          description: Folder name
+          example: Documents
+        tags:
+          type: array
+          items:
+            type: string
+          description: File tags
+          example: ["work", "important"]
+        reference_count:
+          type: integer
+          description: Number of files sharing this content
+          example: 2
+        is_duplicate:
+          type: boolean
+          description: Whether this file shares content with others
+          example: true
+
+    Folder:
+      type: object
+      required:
+        - id
+        - user_id
+        - name
+        - is_public
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          description: Folder ID
+          example: 1
+        user_id:
+          type: integer
+          description: Owner user ID
+          example: 1
+        name:
+          type: string
+          description: Folder name
+          example: Documents
+        parent_id:
+          type: integer
+          nullable: true
+          description: Parent folder ID
+          example: 1
+        is_public:
+          type: boolean
+          description: Public visibility
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: "2023-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2023-01-01T00:00:00Z"
+        username:
+          type: string
+          description: Owner username
+          example: testuser
+        parent_name:
+          type: string
+          nullable: true
+          description: Parent folder name
+          example: Root
+        file_count:
+          type: integer
+          description: Number of files in folder
+          example: 5
+        folder_size:
+          type: integer
+          description: Total size of files in folder (bytes)
+          example: 1048576
+        subfolder_count:
+          type: integer
+          description: Number of subfolders
+          example: 2
+
+    StorageStats:
+      type: object
+      required:
+        - total_used_bytes
+        - original_bytes
+        - saved_bytes
+        - saved_percentage
+        - quota_bytes
+        - used_percentage
+        - storage_quota_mb
+        - used_storage_mb
+        - total_files
+      properties:
+        total_used_bytes:
+          type: integer
+          description: Total used storage in bytes
+          example: 1048576
+        original_bytes:
+          type: integer
+          description: Original file sizes (before deduplication)
+          example: 2097152
+        saved_bytes:
+          type: integer
+          description: Bytes saved through deduplication
+          example: 1048576
+        saved_percentage:
+          type: number
+          format: float
+          description: Percentage saved through deduplication
+          example: 50.0
+        quota_bytes:
+          type: integer
+          description: Storage quota in bytes
+          example: 10485760
+        used_percentage:
+          type: number
+          format: float
+          description: Percentage of quota used
+          example: 10.0
+        storage_quota_mb:
+          type: integer
+          description: Storage quota in MB
+          example: 10
+        used_storage_mb:
+          type: integer
+          description: Used storage in MB
+          example: 1
+        total_files:
+          type: integer
+          description: Total number of files
+          example: 5
+
+    SystemStats:
+      type: object
+      required:
+        - total_files
+        - total_users
+        - total_storage_bytes
+        - total_downloads
+        - public_files
+        - unique_files
+        - unique_storage_bytes
+        - savings_bytes
+        - savings_percentage
+      properties:
+        total_files:
+          type: integer
+          description: Total number of files in system
+          example: 1000
+        total_users:
+          type: integer
+          description: Total number of users
+          example: 50
+        total_storage_bytes:
+          type: integer
+          description: Total storage used in bytes
+          example: 1073741824
+        total_downloads:
+          type: integer
+          description: Total downloads across all files
+          example: 5000
+        public_files:
+          type: integer
+          description: Number of public files
+          example: 100
+        unique_files:
+          type: integer
+          description: Number of unique files (after deduplication)
+          example: 800
+        unique_storage_bytes:
+          type: integer
+          description: Unique storage used in bytes
+          example: 858993459
+        savings_bytes:
+          type: integer
+          description: Bytes saved through deduplication
+          example: 214748365
+        savings_percentage:
+          type: number
+          format: float
+          description: Percentage saved through deduplication
+          example: 20.0
+
+    FilesResponse:
+      type: object
+      required:
+        - files
+        - total
+        - page
+        - limit
+        - total_pages
+      properties:
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/File'
+          description: Array of files
+        total:
+          type: integer
+          description: Total number of files
+          example: 25
+        page:
+          type: integer
+          description: Current page number
+          example: 1
+        limit:
+          type: integer
+          description: Items per page
+          example: 10
+        total_pages:
+          type: integer
+          description: Total number of pages
+          example: 3
+
+    FoldersResponse:
+      type: object
+      required:
+        - folders
+        - total
+        - page
+        - limit
+      properties:
+        folders:
+          type: array
+          items:
+            $ref: '#/components/schemas/Folder'
+          description: Array of folders
+        total:
+          type: integer
+          description: Total number of folders
+          example: 10
+        page:
+          type: integer
+          description: Current page number
+          example: 1
+        limit:
+          type: integer
+          description: Items per page
+          example: 10
+
+    UsersResponse:
+      type: object
+      required:
+        - users
+        - total
+        - page
+        - limit
+      properties:
+        users:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/User'
+              - type: object
+                properties:
+                  file_count:
+                    type: integer
+                    description: Number of files owned
+                    example: 5
+                  used_storage_bytes:
+                    type: integer
+                    description: Storage used in bytes
+                    example: 1048576
+                  total_downloads:
+                    type: integer
+                    description: Total downloads of user's files
+                    example: 25
+          description: Array of users with additional stats
+        total:
+          type: integer
+          description: Total number of users
+          example: 50
+        page:
+          type: integer
+          description: Current page number
+          example: 1
+        limit:
+          type: integer
+          description: Items per page
+          example: 10
+
+tags:
+  - name: Authentication
+    description: User authentication and profile management
+  - name: File Management
+    description: File upload, download, and management operations
+  - name: Folder Management
+    description: Folder creation, organization, and management
+  - name: Admin
+    description: Administrative operations (admin users only)
