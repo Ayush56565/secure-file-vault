@@ -84,7 +84,7 @@ This guide will help you deploy your Secure File Vault application on Render usi
 - **Context**: `./backend`
 - **Plan**: Free
 - **Port**: 10000 (automatically set by Render)
-- **Disk**: 1GB persistent storage for file uploads
+- **Storage**: Ephemeral storage in `/tmp/uploads` (files lost on restart)
 
 **Environment Variables**:
 ```
@@ -92,7 +92,7 @@ DATABASE_URL=<automatically provided by Render>
 JWT_SECRET=<automatically generated>
 PORT=10000
 GIN_MODE=release
-UPLOAD_DIR=/app/uploads
+UPLOAD_DIR=/tmp/uploads
 RATE_LIMIT_RPS=100
 DEFAULT_QUOTA_MB=1000
 MAX_FILE_SIZE_MB=100
@@ -138,8 +138,14 @@ PORT=10000
 
 ### Performance Considerations
 - **Cold Starts**: First request after sleep takes ~30 seconds
-- **File Storage**: 1GB persistent disk for uploads
+- **File Storage**: Ephemeral storage (files lost on service restart)
 - **Database**: Shared PostgreSQL instance
+
+### ⚠️ Important: File Storage Limitation
+**Files uploaded to the free tier are stored in ephemeral storage (`/tmp/uploads`) and will be lost when the service restarts.** This is a limitation of Render's free tier. For persistent file storage, you would need to:
+1. Upgrade to a paid plan to use persistent disks
+2. Use external storage services (AWS S3, Google Cloud Storage, etc.)
+3. Store files in the database (not recommended for large files)
 
 ## 🚨 Troubleshooting
 
@@ -158,8 +164,8 @@ PORT=10000
    - Check CORS configuration in backend
 
 4. **File Uploads Fail**:
-   - Ensure disk is mounted at `/app/uploads`
    - Check file size limits
+   - Note: Files are stored in ephemeral storage and will be lost on restart
 
 ### Debugging Steps
 

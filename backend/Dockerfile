@@ -38,9 +38,9 @@ COPY --from=builder /app/main .
 # Copy migrations
 COPY --from=builder /app/migrations ./migrations
 
-# Create uploads directory
-RUN mkdir -p /app/uploads && \
-    chown -R appuser:appgroup /app
+# Create uploads directory in /tmp (ephemeral storage for free tier)
+RUN mkdir -p /tmp/uploads && \
+    chown -R appuser:appgroup /app /tmp/uploads
 
 # Switch to non-root user
 USER appuser
