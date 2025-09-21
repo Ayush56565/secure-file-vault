@@ -26,7 +26,7 @@ export const RealTimeProvider: React.FC<RealTimeProviderProps> = ({ children }) 
   const queryClient = useQueryClient();
   const [lastMessage, setLastMessage] = useState<any>(null);
 
-  const wsUrl = process.env.REACT_APP_WS_URL || `ws://localhost:8080/ws`;
+  const wsUrl = process.env.REACT_APP_WS_URL || `wss://secure-file-vault-backend-6wqo.onrender.com/ws`;
 
   const { isConnected, sendMessage } = useWebSocket(wsUrl, {
     onMessage: (message) => {
