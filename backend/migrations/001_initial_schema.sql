@@ -116,7 +116,9 @@ CREATE TRIGGER update_files_updated_at BEFORE UPDATE ON files
 CREATE TRIGGER update_folders_updated_at BEFORE UPDATE ON folders
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Insert default admin user (password: admin123)
+-- Insert default users
 INSERT INTO users (username, email, password_hash, is_admin, storage_quota_mb) 
-VALUES ('admin', 'admin@filevault.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', true, 1000)
+VALUES 
+	('testuser', 'testuser@filevault.com', '$2a$10$oGE2mo0kGCtngxrVErqeDue.DxR53URO2u.aoVZFL98nZBKRgN2ZO', false, 100),
+	('admin2', 'admin2@filevault.com', '$2a$10$ZBi9dWZ7pt2mj8VmAYtEkOSF2bBmnFk1e221v/liHPPh.NeBgDH5e', true, 1000)
 ON CONFLICT (username) DO NOTHING;
